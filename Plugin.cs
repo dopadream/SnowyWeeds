@@ -14,7 +14,7 @@ namespace SnowyWeeds
     [BepInDependency(WEATHER_REGISTRY, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        const string PLUGIN_GUID = "dopadream.lethalcompany.snowyweeds", PLUGIN_NAME = "SnowyWeeds", PLUGIN_VERSION = "1.3.4", WEATHER_REGISTRY = "mrov.WeatherRegistry", ARTIFICE_BLIZZARD = "butterystancakes.lethalcompany.snowyweeds";
+        const string PLUGIN_GUID = "dopadream.lethalcompany.snowyweeds", PLUGIN_NAME = "SnowyWeeds", PLUGIN_VERSION = "1.4.0", WEATHER_REGISTRY = "mrov.WeatherRegistry", ARTIFICE_BLIZZARD = "butterystancakes.lethalcompany.artificeblizzard";
         internal static new ManualLogSource Logger;
         internal static Texture weedTexture;
         internal static Material weedMaterial;
