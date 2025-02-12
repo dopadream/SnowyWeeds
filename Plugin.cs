@@ -3,6 +3,7 @@ using BepInEx.Bootstrap;
 using BepInEx.Logging;
 using HarmonyLib;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using WeatherRegistry;
@@ -13,9 +14,10 @@ namespace SnowyWeeds
     [BepInDependency(WEATHER_REGISTRY, BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
-        const string PLUGIN_GUID = "dopadream.lethalcompany.snowyweeds", PLUGIN_NAME = "SnowyWeeds", PLUGIN_VERSION = "1.3.4", WEATHER_REGISTRY = "mrov.WeatherRegistry";
+        const string PLUGIN_GUID = "dopadream.lethalcompany.snowyweeds", PLUGIN_NAME = "SnowyWeeds", PLUGIN_VERSION = "1.3.4", WEATHER_REGISTRY = "mrov.WeatherRegistry", ARTIFICE_BLIZZARD = "butterystancakes.lethalcompany.snowyweeds";
         internal static new ManualLogSource Logger;
         internal static Texture weedTexture;
+        internal static Material weedMaterial;
 
         void Awake()
         {
@@ -42,39 +44,54 @@ namespace SnowyWeeds
 
         private static bool IsSnowLevel()
         {
-            if (Chainloader.PluginInfos.ContainsKey(WEATHER_REGISTRY))
-            {
-                return WeatherRegistrySnowCheck();
-            } else
-            {
-                return StartOfRound.Instance.currentLevel.levelIncludesSnowFootprints;
-            }
+            if (Chainloader.PluginInfos.ContainsKey(WEATHER_REGISTRY) && WeatherRegistrySnowCheck())
+                return true;
+
+            return StartOfRound.Instance.currentLevel.levelIncludesSnowFootprints && (StartOfRound.Instance.currentLevel.name != "ArtificeLevel" || !Chainloader.PluginInfos.ContainsKey(ARTIFICE_BLIZZARD) || GameObject.Find("/Systems/Audio/BlizzardAmbience") == null);
         }
 
         private static bool WeatherRegistrySnowCheck()
         {
-            return StartOfRound.Instance.currentLevel.levelIncludesSnowFootprints || WeatherManager.GetCurrentLevelWeather().name.Equals("Snowfall") || WeatherManager.GetCurrentLevelWeather().name.Equals("Blizzard");
+            return WeatherManager.GetCurrentLevelWeather().name.Equals("Snowfall") || WeatherManager.GetCurrentLevelWeather().name.Equals("Blizzard");
         }
 
         [HarmonyPatch]
         private class SnowyWeedPatches
         {
-            [HarmonyPatch(typeof(MoldSpreadManager), "GenerateMold")]
+            [HarmonyPatch(typeof(MoldSpreadManager), "Start")]
             [HarmonyPostfix]
-            private static void PostSpreadMold(MoldSpreadManager __instance)
+            private static void PostStart(MoldSpreadManager __instance)
             {
-                if (!IsSnowLevel() || StartOfRound.Instance == null)
+                if (weedMaterial == null && weedTexture != null)
+                {
+                    Renderer weed = __instance.moldPrefab?.GetComponentsInChildren<Renderer>()?.Where(rend => rend.gameObject.layer != 22)?.FirstOrDefault();
+                    if (weed != null)
+                    {
+                        weedMaterial = Instantiate(weed.sharedMaterial);
+                        weedMaterial.mainTexture = weedTexture;
+                        Logger.LogDebug("Cached snowy material");
+                    }
+                    else
+                        Logger.LogError("Failed to create snowy weeds material");
+                }
+            }
+            [HarmonyPatch(typeof(RoundManager), "FinishGeneratingNewLevelClientRpc")]
+            [HarmonyPostfix]
+            private static void PostSpreadMold()
+            {
+                if (weedMaterial == null || !IsSnowLevel())
                 {
                     return;
                 }
-                for (int i = 0; i < __instance.moldContainer.childCount; i++)
+
+                Renderer[] componentsInChildren = FindAnyObjectByType<MoldSpreadManager>()?.moldContainer?.GetComponentsInChildren<Renderer>();
+                if (componentsInChildren == null || componentsInChildren.Length < 1)
+                    return;
+
+                foreach (Renderer renderers in componentsInChildren)
                 {
-                    Renderer[] componentsInChildren = __instance.moldContainer.GetComponentsInChildren<Renderer>();
-                    foreach (Renderer renderers in componentsInChildren)
-                    {
-                        renderers.material.mainTexture = weedTexture;
-                        Logger.LogDebug(renderers.material.mainTexture.name + " applied to shroud");
-                    }
+                    renderers.sharedMaterial = weedMaterial;
+                    Logger.LogDebug(weedMaterial.mainTexture.name + " applied to shroud");
                 }
             }
         }
