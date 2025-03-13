@@ -24,6 +24,17 @@ namespace SnowyWeeds
         {
             Logger = base.Logger;
 
+            if (Chainloader.PluginInfos.ContainsKey(LOBBY_COMPATIBILITY))
+            {
+                LobbyCompatibility.Init();
+                Plugin.Logger.LogInfo("CROSS-COMPATIBILITY - Lobby Compatibility detected");
+            }
+
+            if (Chainloader.PluginInfos.ContainsKey(WEATHER_REGISTRY))
+            {
+                Plugin.Logger.LogInfo("CROSS-COMPATIBILITY - Weather Registry detected");
+            }
+
             try
             {
                 AssetBundle weedBundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowyweeds"));
